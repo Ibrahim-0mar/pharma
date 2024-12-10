@@ -41,7 +41,7 @@ git clone https://github.com/Ibrahim-0mar/pharma
 2. Install dependencies:
 
 ```bash
-cd medical-prescriptions-frontend
+cd pharma
 npm install
 ```
 
