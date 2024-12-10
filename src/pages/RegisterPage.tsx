@@ -1,4 +1,21 @@
-import { Button } from "../components/ui/button";
+/**
+ * @file Registration Page Component
+ * @module pages/RegisterPage
+ * @description Handles user registration with a multi-step form process for the Doctor's Prescription System
+ */
+
+import customAxios from '@/lib/axios/axios.config';
+import {
+  registerSchema,
+  type RegisterFormValues,
+} from '@/lib/schemas/register.schema';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { UserIcon } from 'lucide-react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { Button } from '../components/ui/button';
 import {
   Card,
   CardContent,
@@ -6,367 +23,534 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "../components/ui/card";
-import { Checkbox } from "../components/ui/checkbox";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
+} from '../components/ui/card';
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../components/ui/tabs";
-import { UserIcon, Stethoscope } from "lucide-react";
-import { useState } from "react";
-import { cn } from "../lib/utils";
-import { Link, useNavigate } from "react-router-dom";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '../components/ui/form';
+import { Input } from '../components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../components/ui/select";
-import { toast } from "react-toastify";
+} from '../components/ui/select';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '../components/ui/tabs';
+import { cn } from '../lib/utils';
 
-export default function Component() {
-  const [activeTab, setActiveTab] = useState("account");
-  const [formValues, setFormValues] = useState({
-    userType: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    fullName: "",
-    gender: "",
-    dob: "",
-    height: "",
-    weight: "",
-  });
+/**
+ * Registration page component with multi-step form validation
+ * @component
+ * @example
+ * ```tsx
+ * <RegisterPage />
+ * ```
+ *
+ * @description
+ * Provides a three-step registration process:
+ * 1. Account Details - Email and password setup
+ * 2. Personal Details - User information collection
+ * 3. Confirmation - Review and submit
+ *
+ * Features:
+ * - Form validation using Zod schema
+ * - Progressive disclosure with tabs
+ * - Real-time validation feedback
+ * - Accessible form controls
+ * - Responsive layout
+ */
+export default function RegisterPage() {
+  /**
+   * Current active tab state
+   * @type {string}
+   */
+  const [activeTab, setActiveTab] = useState('account');
   const nav = useNavigate();
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { id, value } = e.target;
-    setFormValues((prevValues) => ({ ...prevValues, [id]: value }));
-  };
+  /**
+   * Form instance with Zod schema validation
+   * @type {UseFormReturn<RegisterFormValues>}
+   */
+  const form = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      userType: 'pharmacist',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      fullName: '',
+      gender: 'male',
+      dob: '',
+      height: '',
+      weight: '',
+    },
+  });
 
+  /**
+   * Handles tab navigation with form validation
+   * @param {string} tab - Target tab identifier
+   * @returns {void}
+   */
   const handleTabChange = (tab: string) => {
-    if (
-      tab === "details" &&
-      (!formValues.email || !formValues.password || !formValues.confirmPassword)
-    ) {
-      toast.error("Please fill out all required account fields.");
+    const { trigger } = form;
+
+    if (tab === 'details') {
+      trigger(['email', 'password', 'confirmPassword']).then(
+        (isValid) => {
+          if (!isValid) {
+            toast.error(
+              'Please fill out all required account fields correctly.'
+            );
+            return;
+          }
+          setActiveTab(tab);
+        }
+      );
       return;
     }
-    if (
-      tab === "confirmation" &&
-      (!formValues.fullName ||
-        !formValues.gender ||
-        !formValues.dob ||
-        !formValues.height ||
-        !formValues.weight)
-    ) {
-      toast.error("Please fill out all required details fields.");
+
+    if (tab === 'confirmation') {
+      trigger(['fullName', 'gender', 'dob', 'height', 'weight']).then(
+        (isValid) => {
+          if (!isValid) {
+            toast.error(
+              'Please fill out all required details fields correctly.'
+            );
+            return;
+          }
+          setActiveTab(tab);
+        }
+      );
       return;
     }
+
     setActiveTab(tab);
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    localStorage.setItem("userData", JSON.stringify(formValues));
-    nav("/dashboard/profile");
+  /**
+   * Handles form submission for user registration
+   * @async
+   * @function
+   * @param {RegisterFormValues} values - Form values containing user registration data
+   * @throws {Error} When API request fails
+   *
+   * @example
+   * ```tsx
+   * <form onSubmit={form.handleSubmit(onSubmit)}>
+   * ```
+   *
+   * @description
+   * 1. Stores user data in localStorage
+   * 2. Makes API request to register pharmacist
+   * 3. Navigates to profile page on success
+   * 4. Shows success/error toasts
+   */
+  const onSubmit = async (values: RegisterFormValues) => {
+    try {
+      // TODO: remove this line after testing api
+      localStorage.setItem('userData', JSON.stringify(values));
+      // Make API call to register pharmacist
+      const { data } = await customAxios.post('/RegisterPharmacist', {
+        email: values.email,
+        password: values.password,
+        fullName: values.fullName,
+        height: values.height,
+        weight: values.weight,
+        gender: values.gender,
+        birthOfDate: values.dob,
+      });
+
+      // TODO: check backend response and show toast message based on that
+      toast.success('Account created successfully!');
+      nav('/dashboard/profile');
+    } catch (error) {
+      console.error(`[RegisterPage]`, error);
+      toast.error(
+        error.message || 'Something went wrong. Please try again.'
+      );
+    }
   };
 
   return (
-    <main className="flex flex-col items-center justify-center lg:flex-row">
-      <div className="flex items-center justify-center flex-1 min-h-screen">
-        <div className="p-6 lg:p-10">
-          <h1 className="mb-6 text-3xl font-bold">
+    <main className='flex flex-col items-center justify-center lg:flex-row'>
+      <div className='flex items-center justify-center flex-1 min-h-screen'>
+        <div className='p-6 lg:p-10'>
+          <h1 className='mb-6 text-3xl font-bold'>
             Register In Doctor's Prescription System
           </h1>
-          <Tabs value={activeTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="account">Account</TabsTrigger>
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="confirmation">Confirmation</TabsTrigger>
+          <Tabs
+            value={activeTab}
+            className='w-full'
+          >
+            <TabsList className='grid w-full grid-cols-3'>
+              <TabsTrigger value='account'>Account</TabsTrigger>
+              <TabsTrigger value='details'>Details</TabsTrigger>
+              <TabsTrigger value='confirmation'>
+                Confirmation
+              </TabsTrigger>
             </TabsList>
-            <form onSubmit={handleSubmit}>
-              <TabsContent value="account">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Account Details</CardTitle>
-                    <CardDescription>
-                      Set up your account credentials
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-center space-x-4">
-                        <div>
-                          <Checkbox
-                            id="pharmacist"
-                            checked={formValues.userType === "pharmacist"}
-                            onCheckedChange={() =>
-                              setFormValues({
-                                ...formValues,
-                                userType: "pharmacist",
-                              })
-                            }
-                            className="hidden"
-                          />
-                          <Label
-                            htmlFor="pharmacist"
-                            className={cn(
-                              "flex items-center flex-col gap-4 text-2xl font-semibold border p-6 rounded-md",
-                              {
-                                "bg-primary text-background":
-                                  formValues.userType === "pharmacist",
-                              }
-                            )}
-                          >
-                            <UserIcon className="w-16 h-16" />
-                            <span>Pharmacist</span>
-                          </Label>
-                        </div>
-                        {/* <div>
-                          <Checkbox
-                            id="doctor"
-                            checked={formValues.userType === "doctor"}
-                            onCheckedChange={() =>
-                              setFormValues({
-                                ...formValues,
-                                userType: "doctor",
-                              })
-                            }
-                            className="hidden"
-                          />
-                          <Label
-                            htmlFor="doctor"
-                            className={cn(
-                              "flex items-center flex-col gap-4 text-2xl font-semibold border p-6 rounded-md",
-                              {
-                                "bg-primary text-background":
-                                  formValues.userType === "doctor",
-                              }
-                            )}
-                          >
-                            <Stethoscope className="w-16 h-16" />
-                            <span>Doctor</span>
-                          </Label>
-                        </div> */}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="john@example.com"
-                        required
-                        value={formValues.email}
-                        onChange={handleInputChange}
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)}>
+                <TabsContent value='account'>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Account Details</CardTitle>
+                      <CardDescription>
+                        Set up your account credentials
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className='space-y-4'>
+                      <FormField
+                        control={form.control}
+                        name='userType'
+                        render={({ field }) => (
+                          <FormItem>
+                            <div className='flex justify-center space-x-4'>
+                              <div
+                                role='button'
+                                tabIndex={0}
+                                onClick={() =>
+                                  field.onChange('pharmacist')
+                                }
+                                onKeyDown={(e) => {
+                                  if (
+                                    e.key === 'Enter' ||
+                                    e.key === ' '
+                                  ) {
+                                    field.onChange('pharmacist');
+                                  }
+                                }}
+                                className={cn(
+                                  'flex items-center flex-col gap-4 text-2xl font-semibold border p-6 rounded-md cursor-pointer',
+                                  {
+                                    'bg-primary text-background':
+                                      field.value === 'pharmacist',
+                                  }
+                                )}
+                              >
+                                <UserIcon className='w-16 h-16' />
+                                <span>Pharmacist</span>
+                              </div>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        required
-                        value={formValues.password}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm password</Label>
-                      <Input
-                        id="confirmPassword"
-                        type="password"
-                        required
-                        value={formValues.confirmPassword}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                  </CardContent>
-                  <CardFooter className="flex flex-col items-start gap-4">
-                    <Button
-                      type="button"
-                      className="w-32"
-                      onClick={() => handleTabChange("details")}
-                    >
-                      Next
-                    </Button>
-                    <p>
-                      Already have an account?{" "}
-                      <Link to="/register" className="underline text-primary">
-                        login
-                      </Link>
-                    </p>
-                  </CardFooter>
-                </Card>
-              </TabsContent>
 
-              <TabsContent value="details">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Details Information</CardTitle>
-                    <CardDescription>Enter your details </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="fullName">Full Name</Label>
-                      <Input
-                        id="fullName"
-                        placeholder="John Doe"
-                        required
-                        value={formValues.fullName}
-                        onChange={handleInputChange}
+                      <FormField
+                        control={form.control}
+                        name='email'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder='john@example.com'
+                                type='email'
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="gender">Gender</Label>
-                      <Select
-                        value={formValues.gender}
-                        onValueChange={(value) =>
-                          setFormValues({ ...formValues, gender: value })
+
+                      <FormField
+                        control={form.control}
+                        name='password'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input
+                                type='password'
+                                placeholder='********'
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name='confirmPassword'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Confirm Password</FormLabel>
+                            <FormControl>
+                              <Input
+                                type='password'
+                                placeholder='********'
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                    <CardFooter className='flex flex-col items-start gap-4'>
+                      <Button
+                        type='button'
+                        className='w-32'
+                        onClick={() => handleTabChange('details')}
+                        disabled={form.formState.isSubmitting}
+                      >
+                        {form.formState.isSubmitting
+                          ? 'Next Step...'
+                          : 'Next'}
+                      </Button>
+                      <p>
+                        Already have an account?{' '}
+                        <Link
+                          to='/login'
+                          className='underline text-primary'
+                        >
+                          login
+                        </Link>
+                      </p>
+                    </CardFooter>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value='details'>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Personal Details</CardTitle>
+                      <CardDescription>
+                        Tell us more about yourself
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className='space-y-4'>
+                      <FormField
+                        control={form.control}
+                        name='fullName'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Full Name</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder='John Doe'
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name='gender'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Gender</FormLabel>
+                            <Select
+                              value={field.value}
+                              onValueChange={field.onChange}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder='Select your gender' />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value='male'>
+                                  Male
+                                </SelectItem>
+                                <SelectItem value='female'>
+                                  Female
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name='dob'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Date of Birth</FormLabel>
+                            <FormControl>
+                              <Input
+                                type='date'
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name='height'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Height (cm)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type='number'
+                                placeholder='170'
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name='weight'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Weight (kg)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type='number'
+                                placeholder='70'
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                    <CardFooter className='flex items-center gap-4'>
+                      <Button
+                        type='button'
+                        className='w-32'
+                        onClick={() =>
+                          handleTabChange('confirmation')
                         }
                       >
-                        <SelectTrigger id="gender" className="w-full">
-                          <SelectValue placeholder="Select your gender" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="dob">Date of Birth</Label>
-                      <Input
-                        id="dob"
-                        type="date"
-                        required
-                        value={formValues.dob}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="height">Height (Cm)</Label>
-                      <Input
-                        id="height"
-                        type="number"
-                        required
-                        value={formValues.height}
-                        onChange={handleInputChange}
-                      />
-                      <Label htmlFor="weight">Weight (Kg)</Label>
-                      <div className="space-y-2">
-                        <Input
-                          id="weight"
-                          type="number"
-                          required
-                          value={formValues.weight}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="flex items-center gap-4">
-                    <Button
-                      type="button"
-                      className="w-32"
-                      onClick={() => handleTabChange("confirmation")}
-                    >
-                      Next
-                    </Button>
-                    <Button
-                      type="button"
-                      className="w-32"
-                      variant={"outline"}
-                      onClick={() => setActiveTab("account")}
-                    >
-                      Previous
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </TabsContent>
+                        Next
+                      </Button>
+                      <Button
+                        type='button'
+                        variant='outline'
+                        className='w-32'
+                        onClick={() => setActiveTab('account')}
+                      >
+                        Previous
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                </TabsContent>
 
-              <TabsContent value="confirmation">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Confirmation</CardTitle>
-                    <CardDescription>Review your information</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center gap-6">
-                      {formValues.userType === "pharmacist" ? (
-                        <div
-                          className={cn(
-                            "flex bg-primary text-background items-center flex-col gap-4 text-2xl font-semibold border p-6 rounded-md"
-                          )}
-                        >
-                          <UserIcon className="w-16 h-16" />
-                          <span>pharmacist</span>
+                <TabsContent value='confirmation'>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Review Your Information</CardTitle>
+                      <CardDescription>
+                        Please verify your details before submitting
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className='space-y-4'>
+                      <div className='grid gap-4 md:grid-cols-2'>
+                        <div className='space-y-1'>
+                          <p className='text-sm font-medium'>
+                            User Type
+                          </p>
+                          <p className='text-sm capitalize'>
+                            {form.getValues('userType')}
+                          </p>
                         </div>
-                      ) : (
-                        <div
-                          className={cn(
-                            "flex items-center flex-col gap-4 bg-primary text-background text-2xl font-semibold border p-6 rounded-md"
-                          )}
-                        >
-                          <Stethoscope className="w-16 h-16" />
-                          <span>Doctor</span>
+                        <div className='space-y-1'>
+                          <p className='text-sm font-medium'>Email</p>
+                          <p className='text-sm'>
+                            {form.getValues('email')}
+                          </p>
                         </div>
-                      )}
-                      <div>
-                        <p>
-                          <b>Full Name:</b> {formValues.fullName}
-                        </p>
-                        <p>
-                          <b>Email:</b> {formValues.email}
-                        </p>
+                        <div className='space-y-1'>
+                          <p className='text-sm font-medium'>
+                            Full Name
+                          </p>
+                          <p className='text-sm'>
+                            {form.getValues('fullName')}
+                          </p>
+                        </div>
+                        <div className='space-y-1'>
+                          <p className='text-sm font-medium'>
+                            Gender
+                          </p>
+                          <p className='text-sm capitalize'>
+                            {form.getValues('gender')}
+                          </p>
+                        </div>
+                        <div className='space-y-1'>
+                          <p className='text-sm font-medium'>
+                            Date of Birth
+                          </p>
+                          <p className='text-sm'>
+                            {form.getValues('dob')}
+                          </p>
+                        </div>
+                        <div className='space-y-1'>
+                          <p className='text-sm font-medium'>
+                            Height
+                          </p>
+                          <p className='text-sm'>
+                            {form.getValues('height')} cm
+                          </p>
+                        </div>
+                        <div className='space-y-1'>
+                          <p className='text-sm font-medium'>
+                            Weight
+                          </p>
+                          <p className='text-sm'>
+                            {form.getValues('weight')} kg
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <p>
-                        <b>Gender:</b> {formValues.gender}
-                      </p>
-                      <p>
-                        <b>Date of Birth:</b> {formValues.dob}
-                      </p>
-                      <p>
-                        <b>Height:</b> {formValues.height} cm
-                      </p>
-                      <p>
-                        <b>Weight:</b> {formValues.weight} kg
-                      </p>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="flex items-center gap-4 ">
-                    <Button type="submit" className="w-32">
-                      Create Account
-                    </Button>
-                    <Button
-                      type="button"
-                      className="w-32"
-                      variant={"outline"}
-                      onClick={() => setActiveTab("details")}
-                    >
-                      Previous
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </TabsContent>
-            </form>
+                    </CardContent>
+                    <CardFooter className='flex items-center gap-4'>
+                      <Button
+                        type='submit'
+                        className='w-32'
+                        disabled={form.formState.isSubmitting}
+                      >
+                        {form.formState.isSubmitting
+                          ? 'Registering...'
+                          : 'Register'}
+                      </Button>
+                      <Button
+                        type='button'
+                        variant='outline'
+                        className='w-32'
+                        onClick={() => setActiveTab('details')}
+                      >
+                        Previous
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                </TabsContent>
+              </form>
+            </Form>
           </Tabs>
         </div>
       </div>
 
-      <div className="flex-1 hidden h-screen bg-gray-100 lg:block">
+      <div className='flex-1 hidden h-screen bg-gray-100 lg:block'>
         <img
-          src="/images/doctor-looking-at-clipboard.jpg"
-          alt="Registration illustration"
-          className="object-cover object-top w-full h-full"
+          src='/images/doctor-looking-at-clipboard.jpg'
+          alt='Registration illustration'
+          className='object-cover object-top w-full h-full'
         />
       </div>
     </main>

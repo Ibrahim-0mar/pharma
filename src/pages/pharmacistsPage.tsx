@@ -1,14 +1,15 @@
-import { useState, useEffect } from "react";
+import { PlusIcon, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
 import {
   Dialog,
-  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "../components/ui/dialog";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import {
   Table,
   TableBody,
@@ -17,7 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
-import { PlusIcon, Trash2 } from "lucide-react";
 
 type pharmacist = {
   name: string;

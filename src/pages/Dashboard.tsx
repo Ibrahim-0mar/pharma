@@ -1,4 +1,6 @@
+import { Database, LogOut, PillBottle, User } from "lucide-react";
 import * as React from "react";
+import { Link, Outlet, useNavigate } from "react-router-dom";
 import { Separator } from "../components/ui/separator";
 import {
   Sidebar,
@@ -11,8 +13,6 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "../components/ui/sidebar";
-import { Link, Outlet, useNavigate } from "react-router-dom";
-import { Database, LogOut, PillBottle, User } from "lucide-react";
 
 export default function Dashboard() {
   const user = JSON.parse(localStorage.getItem("userData") || "{}");
